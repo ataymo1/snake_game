@@ -1,5 +1,7 @@
 #include <ncurses.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -34,7 +36,20 @@ typedef struct {
     Point food;
     int score;
     int game_over;
+    int wrap_enabled;
 } GameState;
+
+int parse_args(int argc, char **argv, int *wrap_enabled) {
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-wrap") == 0 || strcmp(argv[i], "-w") == 0) {
+            *wrap_enabled = 1;
+        } else {
+            printf("Unknown option: \n");
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void settings() {
     initscr();
@@ -154,10 +169,18 @@ void move_snake(Snake *snake, GameState *game) {
             break;
     }
     
-    if (next_head.x < 0 || next_head.x >= BOARD_WIDTH ||
-        next_head.y < 0 || next_head.y >= BOARD_HEIGHT) {
-        game->game_over = 1;
-        return;
+    if (game->wrap_enabled) {
+        if (next_head.x < 0) next_head.x = BOARD_WIDTH - 1;
+        else if (next_head.x >= BOARD_WIDTH) next_head.x = 0;
+        
+        if (next_head.y < 0) next_head.y = BOARD_HEIGHT - 1;
+        else if (next_head.y >= BOARD_HEIGHT) next_head.y = 0;
+    } else {
+        if (next_head.x < 0 || next_head.x >= BOARD_WIDTH ||
+            next_head.y < 0 || next_head.y >= BOARD_HEIGHT) {
+            game->game_over = 1;
+            return;
+        }
     }
     
     int ate_food = 0;
@@ -216,6 +239,7 @@ void draw_game(Snake *snake, GameState *game) {
     
     mvprintw(BOARD_HEIGHT + 3, 0, "score: %d", game->score);
     mvprintw(BOARD_HEIGHT + 4, 0, "controls: WASD to move, q to quit");
+    mvprintw(BOARD_HEIGHT + 5, 0, "wrap: %s", game->wrap_enabled ? "on" : "off");
     
     if (game->game_over) {
         mvprintw(BOARD_HEIGHT + 6, 0, "game over, press r to restart, q to quit");
@@ -224,13 +248,19 @@ void draw_game(Snake *snake, GameState *game) {
     refresh();
 }
 
-int main() {
+int main(int argc, char **argv) {
     Snake snake;
     GameState game;
     int should_quit = 0;
     int is_first_game = 1;
+    int wrap_enabled = 0;
+
+    if (parse_args(argc, argv, &wrap_enabled)) {
+        return 0;
+    }
     
     snake.body = NULL;
+    game.wrap_enabled = wrap_enabled;
     
     settings();
     
