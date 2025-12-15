@@ -4,5 +4,8 @@ snake: snake.c
 clean:
 	rm -f snake
 
-.PHONY: clean
+demo: snake
+	./snake
+
+.PHONY: clean demo
 
